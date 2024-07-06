@@ -7,4 +7,4 @@ Deep learning (DL) methods typically require large datasets to effectively learn
 
 We propose a novel approach to improve the quality of generated US images by introducing a physics-based diffusion model that is specifically designed for this image modality. The proposed model incorporates a US-specific scheduler scheme that mimics the natural behavior of sound wave propagation in ultrasound imaging.
 
-## The code for this project is currently under development and will be uploaded soon. Stay tuned for updates!
+## The code for this project will be uploaded soon. Stay tuned for updates!
