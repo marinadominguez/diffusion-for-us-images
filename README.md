@@ -1,4 +1,6 @@
-# Diffusion as Sound Propagation: Physics-inspired Model for Ultrasound Image Generation &middot; [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com) [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/your/your-project/blob/master/LICENSE) 
+# Diffusion as Sound Propagation: Physics-inspired Model for Ultrasound Image Generation 
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com) 
+[![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/your/your-project/blob/master/LICENSE) 
 
 &nbsp;
 
@@ -40,13 +42,11 @@ We propose a novel approach to improve the quality of generated US images by int
 
 ## Example Results
 
-## Thyroid dataset
-
-&nbsp;
+# Thyroid dataset
 
 <img src='./README_assets/camus_results.png'>  
 
-&nbsp;
+# CAMUS dataset
 
 <img src='./README_assets/thyroid_results.png'>  
 
@@ -60,22 +60,34 @@ We propose a novel approach to improve the quality of generated US images by int
 
 ## Dataset Preparation
 
-To prepare the data, we recommend using the same process outlined in the [Echo from Noise repository](https://github.com/david-stojanovski/echo_from_noise). The data used is the CAMUS dataset, which can be downloaded and processed as follows:
+To prepare the data, we recommend using the same process outlined in the [Echo from Noise repository](https://github.com/david-stojanovski/echo_from_noise). The data used is the CAMUS dataset and the Thyroid dataset, which can be downloaded and processed as follows:
+
+### CAMUS Dataset
 
 1. **Download CAMUS Data**:
     - The CAMUS data used for training and testing can be found [here](https://www.creatis.insa-lyon.fr/Challenge/camus/).
+
 2. **Extract and Format the Data**:
     - You can use the scripts in the `data_preparation/` folder of the **echo_from_noise** repository:
         - Extract the data using `extract_camus_data.py`.
         - Augment the CAMUS labels using `augment_camus_labels.py`.
-    
+
     Follow the instructions provided in the [data preparation section](https://github.com/david-stojanovski/echo_from_noise/tree/master/data_preparation) of the original repository.
+
+### Thyroid Dataset
+
+1. **Download Thyroid Data**:
+    - The Thyroid dataset used for training and testing can be downloaded from [this link](https://www.cs.cit.tum.de/camp/publications/segthy-dataset/).
+
+2. **US Thyroid Dataset**:
+    - You can directly download the ultrasound data from [this link](https://www.campar.in.tum.de/public_datasets/2022_plosone_eilers/US_data.zip).
+
+Once the datasets have been downloaded, make sure to organize and preprocess them according to the instructions in the corresponding dataset documentation.
+
 
 # Semantic Diffusion Model
 
-The default parameters for training and inference can be found in the `./semantic_diffusion_model/config.py` file. The original network our code is developed on can befound [here](https://github.com/WeilunWang/semantic-diffusion-model). This also contains a number of scripts with variations on parameters for both training and inference. 
-
-In our implementation the minimum B-Map is set to 0.97, like this the Semantic Diffusion Model can be train with inclusion of B-Maps. The original network can be also trained setting the minimum B-Map parameter to 1.
+The default parameters for training and inference can be found in the `./semantic_diffusion_model/config.py` file. The original network our code is developed on can befound [here](https://github.com/WeilunWang/semantic-diffusion-model). In our implementation the minimum B-Map is set to 0.97, like this the Semantic Diffusion Model can be train with inclusion of B-Maps. The original network can also be trained by setting the minimum B-Map parameter to 1.
 
 ## Model Training
 
@@ -97,8 +109,8 @@ python3 ./image_sample.py --resume_checkpoint ./path/to/ema_checkpoint.pt \\
 --is_train False --inference_on_train True
 ```
 
-# Checkpoints (Pretrained Models with our Method)
-Pre-trained model checkpoints for generating the synthetic datasets with out method are available for download:
+## Checkpoints (Pretrained Models with our Method)
+Pre-trained model checkpoints for generating the synthetic datasets with our method are available for download:
 
 |Dataset       |Download link     |
 |:-------------|:-----------------|
