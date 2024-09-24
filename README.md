@@ -1,6 +1,4 @@
-# Diffusion as Sound Propagation: Physics-inspired Model for Ultrasound Image Generation 
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com) 
-[![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/your/your-project/blob/master/LICENSE) 
+# Diffusion as Sound Propagation: Physics-inspired Model for Ultrasound Image Generation &middot; [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com) [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/your/your-project/blob/master/LICENSE) 
 
 &nbsp;
 
@@ -42,11 +40,11 @@ We propose a novel approach to improve the quality of generated US images by int
 
 ## Example Results
 
-# Thyroid dataset
+### Thyroid dataset
 
 <img src='./README_assets/camus_results.png'>  
 
-# CAMUS dataset
+### CAMUS dataset
 
 <img src='./README_assets/thyroid_results.png'>  
 
