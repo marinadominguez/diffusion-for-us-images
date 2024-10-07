@@ -1,5 +1,7 @@
 # Diffusion as Sound Propagation: Physics-inspired Model for Ultrasound Image Generation &middot; [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com) [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/marinadominguez/diffusion-for-us-images/blob/main/LICENSE) 
 
+### [Project Page]([https://danivelikova.github.io/diff-us/]) | [Paper](https://doi.org/10.48550/arXiv.2407.05428)
+
 &nbsp;
 
 <img src='./README_assets/sdm_with&withoutBmaps.png'>  
