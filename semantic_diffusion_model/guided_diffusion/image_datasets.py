@@ -6,7 +6,10 @@ import random
 import blobfile as bf
 import numpy as np
 from PIL import Image, ImageOps
-from mpi4py import MPI
+try:
+    from mpi4py import MPI
+except Exception:
+    MPI = None
 from torch.utils.data import DataLoader, Dataset
 
 from PIL import Image
@@ -15,7 +18,7 @@ import torchvision.transforms as transforms
 
 
 
-def load_data(cfg):
+def load_data(cfg, split=None, return_dataset=False):
     """
     For a dataset, create a generator over (images, kwargs) pairs.
 
@@ -25,6 +28,12 @@ def load_data(cfg):
     and the values are integer tensors of class labels.
 
     """
+
+    if split is None:
+        split = "training" if cfg.TRAIN.IS_TRAIN else "validation"
+    
+    if cfg.TEST.INFERENCE_ON_TRAIN and not cfg.TRAIN.IS_TRAIN and split == "validation":
+        split = "inference_trainval"
 
     if not cfg.DATASETS.DATADIR:
         raise ValueError("unspecified data directory")
@@ -45,24 +54,25 @@ def load_data(cfg):
         instances = None
 
     elif cfg.DATASETS.DATASET_MODE == 'camus':
-        if cfg.TEST.INFERENCE_ON_TRAIN and not cfg.TRAIN.IS_TRAIN:  # inference on train in one go to make synthetic image generation easier
-            all_files = glob.glob(os.path.join(cfg.DATASETS.DATADIR, 'images', 'training', '*.png'))
-            all_files = all_files + glob.glob(os.path.join(cfg.DATASETS.DATADIR, 'images', 'validation', '*.png'))
+        if split == "inference_trainval": 
+            # and cfg.TEST.INFERENCE_ON_TRAIN and not cfg.TRAIN.IS_TRAIN:  # inference on train in one go to make synthetic image generation easier
+            all_files = glob.glob(os.path.join(cfg.DATASETS.DATADIR, 'images', 'training', '*.png')) + \
+                         glob.glob(os.path.join(cfg.DATASETS.DATADIR, 'images', 'validation', '*.png'))
+            classes = glob.glob(os.path.join(cfg.DATASETS.DATADIR, 'sector_annotations', 'training', '*.png')) + \
+                        glob.glob(os.path.join(cfg.DATASETS.DATADIR, 'sector_annotations', 'validation', '*.png'))
             all_files.sort()
-            classes = glob.glob(os.path.join(cfg.DATASETS.DATADIR, 'sector_annotations', 'training', '*.png'))
-            classes = classes + glob.glob(
-                os.path.join(cfg.DATASETS.DATADIR, 'sector_annotations', 'validation', '*.png'))
             classes.sort()
             instances = None
-        else:
-            print("The images are in directory:", os.path.join(cfg.DATASETS.DATADIR, 'images', 'training'))
-            all_files = _list_image_files_recursively(
-                os.path.join(cfg.DATASETS.DATADIR, 'images', 'training' if cfg.TRAIN.IS_TRAIN else 'validation'))
-            print("The labels are in directory:", os.path.join(cfg.DATASETS.DATADIR, 'sector_annotations', 'training'))
-            classes = _list_image_files_recursively(
-                os.path.join(cfg.DATASETS.DATADIR, 'sector_annotations',
-                             'training' if cfg.TRAIN.IS_TRAIN else 'validation'))
+        else: 
+            all_files = _list_image_files_recursively(os.path.join(cfg.DATASETS.DATADIR, 'images', split))
+            print("The images are in directory:", os.path.join(cfg.DATASETS.DATADIR, 'images', split))
+            classes = _list_image_files_recursively(os.path.join(cfg.DATASETS.DATADIR, 'sector_annotations', split))
+            print("The labels are in directory:", os.path.join(cfg.DATASETS.DATADIR, 'sector_annotations', split))
+            all_files.sort()
+            classes.sort()
             instances = None
+    
+    # nothing changed for camus_*. only 'camus'
     
     elif cfg.DATASETS.DATASET_MODE == 'camus_full_2CH':
         path1 = os.path.join(cfg.DATASETS.DATADIR, '2CH_ED_augmented', 'images',
@@ -153,35 +163,51 @@ def load_data(cfg):
     else:
         raise NotImplementedError('{} not implemented'.format(cfg.DATASETS.DATASET_MODE))
 
+    if MPI is None:
+        shard, num_shards = 0, 1
+    else:
+        shard, num_shards = MPI.COMM_WORLD.Get_rank(), MPI.COMM_WORLD.Get_size()
+
+    if MPI is None:
+        shard = 0
+        num_shards = 1
+    else:
+        shard = MPI.COMM_WORLD.Get_rank()
+        num_shards = MPI.COMM_WORLD.Get_size()
+    
+    is_train_split = (split == "training")
+
     dataset = ImageDataset(
         cfg.DATASETS.DATASET_MODE,
         cfg.TRAIN.IMG_SIZE,
         all_files,
         classes=classes,
         instances=instances,
-        shard=MPI.COMM_WORLD.Get_rank(),
-        num_shards=MPI.COMM_WORLD.Get_size(),
+        #shard=MPI.COMM_WORLD.Get_rank(),
+        #num_shards=MPI.COMM_WORLD.Get_size(),
+        shard=shard,
+        num_shards=num_shards,
         random_crop=cfg.TRAIN.RANDOM_CROP,
         random_flip=cfg.TRAIN.RANDOM_FLIP,
-        is_train=cfg.TRAIN.IS_TRAIN
+        #is_train=cfg.TRAIN.IS_TRAIN
+        is_train=is_train_split
     )
 
-    if cfg.TRAIN.IS_TRAIN:
-        batch_size = cfg.TRAIN.BATCH_SIZE
-        if cfg.TRAIN.DETERMINISTIC:
-            loader = DataLoader(
-                dataset, batch_size=batch_size, shuffle=False, num_workers=cfg.TRAIN.NUM_WORKERS, drop_last=True
-            )
-        else:
-            loader = DataLoader(
-                dataset, batch_size=batch_size, shuffle=True, num_workers=cfg.TRAIN.NUM_WORKERS, drop_last=True
-            )
-    else:
-        batch_size = cfg.TEST.BATCH_SIZE
-        loader = DataLoader(
-            dataset, batch_size=batch_size, shuffle=True, num_workers=cfg.TRAIN.NUM_WORKERS, drop_last=True
-        )
+    batch_size = cfg.TRAIN.BATCH_SIZE if is_train_split else cfg.TEST.BATCH_SIZE
 
+    # shuffle: train sí; val/test NO (para pool fijo determinista)
+    shuffle = (is_train_split and (not cfg.TRAIN.DETERMINISTIC))
+
+    loader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        num_workers=cfg.TRAIN.NUM_WORKERS,
+        drop_last=is_train_split,   # train drop_last True, val/test False
+    )
+
+    if return_dataset:
+        return loader, dataset
     while True:
         yield from loader
 
@@ -294,6 +320,25 @@ class ImageDataset(Dataset):
             pil_instance = pil_instance.convert("L")
         else:
             pil_instance = None
+
+        # --- CAMUS orientation fix (rotate 90º) ---
+        # PIL compat: Image.Transpose.* existe en Pillow nuevas; en viejas usa Image.ROTATE_*
+        try:
+            ROTATE_90  = Image.Transpose.ROTATE_90   # 90º CCW (izquierda)
+            ROTATE_270 = Image.Transpose.ROTATE_270  # 90º CW (derecha)
+        except AttributeError:
+            ROTATE_90  = Image.ROTATE_90
+            ROTATE_270 = Image.ROTATE_270
+
+        if self.dataset_mode in ["camus", "camus_full_2CH", "camus_full_4CH", "camus_full_2CH_4CH"]:
+            # Si quieres "90º hacia la izquierda" (CCW):
+            pil_image = pil_image.transpose(ROTATE_270)
+            pil_class = pil_class.transpose(ROTATE_270)
+            if pil_instance is not None:
+                pil_instance = pil_instance.transpose(ROTATE_270)
+
+            # Si al verlo queda al revés (la parte gorda no queda abajo), cambia ROTATE_90 por ROTATE_270 en las 3 líneas.
+        # ------------------------------------------
 
         if self.dataset_mode == 'cityscapes':
             arr_image, arr_class, arr_instance = resize_arr([pil_image, pil_class, pil_instance], self.resolution)

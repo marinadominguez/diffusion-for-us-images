@@ -9,6 +9,8 @@ __C.DATASETS = edict()
 __C.DATASETS.DATADIR = 'augmented_camus' # '/path/to/dataset' 
 __C.DATASETS.SAVE_DIR = 'output/camus/bmaps' # '/path/to/save'
 __C.DATASETS.DATASET_MODE = 'camus'
+__C.DATASETS.AUGMENT = True
+__C.DATASETS.ROTATE_DEG = 270
 
 __C.TRAIN = edict()
 __C.TRAIN.DIFFUSION = edict()
@@ -25,9 +27,9 @@ __C.TRAIN.DIFFUSION.PRESERVE_LENGTH = False
 __C.TRAIN.DIFFUSION.ADD_BUFFER = False
 __C.TRAIN.B_MAP_SCHEDULER_TYPE = "cosine"
 
-__C.TRAIN.IMG_SIZE = 128 # 256 if you have enough memory
+__C.TRAIN.IMG_SIZE = 256 # 128 if you have enough memory
 __C.TRAIN.NUM_CLASSES = 5
-__C.TRAIN.LR = 1e-4
+__C.TRAIN.LR = 5e-5 #1e-4
 __C.TRAIN.ATTENTION_RESOLUTIONS = "32,16,8"
 __C.TRAIN.CHANNEL_MULT = None
 __C.TRAIN.DROPOUT = 0.0
@@ -51,24 +53,36 @@ __C.TRAIN.DROP_RATE = 0.0
 __C.TRAIN.LOG_INTERVAL = 100 
 __C.TRAIN.SAVE_INTERVAL = 2000 
 __C.TRAIN.RESUME_CHECKPOINT = None # optional, if you want to resume training from a checkpoint
-__C.TRAIN.USE_FP16 = True
-__C.TRAIN.DISTRIBUTED_DATA_PARALLEL = True 
+__C.TRAIN.USE_FP16 = False #True
+__C.TRAIN.DISTRIBUTED_DATA_PARALLEL = False #__C.TRAIN.DISTRIBUTED_DATA_PARALLEL = True 
 __C.TRAIN.USE_NEW_ATTENTION_ORDER = True
 __C.TRAIN.FP16_SCALE_GROWTH = 1e-2 
-__C.TRAIN.NUM_WORKERS = 8 
+__C.TRAIN.NUM_WORKERS = 0 #8 
 __C.TRAIN.DETERMINISTIC = False
 __C.TRAIN.NO_INSTANCE = True
 __C.TRAIN.RANDOM_CROP = False
 __C.TRAIN.RANDOM_FLIP = False
-__C.TRAIN.IS_TRAIN = False
+__C.TRAIN.IS_TRAIN = True #False
 
 __C.TRAIN.CHECKPOINT_DIR = "output"
+
+
+__C.EVAL = edict()
+__C.EVAL.EVERY = 2000                 # alinea con SAVE_INTERVAL
+__C.EVAL.NUM_SAMPLES_METRIC = 64
+__C.EVAL.NUM_SAMPLES_SAVE = 250
+__C.EVAL.W_LPIPS = 1.0
+__C.EVAL.USE_FID = True
+__C.EVAL.FID_MAX_REAL = 250
+__C.EVAL.FID_REAL_DIR = ""            # path a testing reales (dentro del container /workspace/data/...)
+__C.EVAL.REAL_POOL_SIZE = 512         # pool fijo para NN matching
+__C.EVAL.LPIPS_NET = "alex"           # o "vgg"
 
 
 __C.TEST = edict()
 __C.TEST.S = 1.0
 __C.TEST.DETERMINISTIC = True
-__C.TEST.INFERENCE_ON_TRAIN = True
+__C.TEST.INFERENCE_ON_TRAIN = False #True
 __C.TEST.BATCH_SIZE = 4 
 __C.TEST.CLIP_DENOISED = True
 __C.TEST.NUM_SAMPLES = 1000
@@ -81,6 +95,10 @@ def update_config(args, _cfg):
         _cfg.TRAIN.SAVE_DIR = args.savedir
     if args.dataset_mode is not None:
         _cfg.DATASETS.DATASET_MODE = args.dataset_mode
+    if args.augment is not None:
+        _cfg.DATASETS.AUGMENT = args.augment
+    if args.rotate_deg is not None:
+        _cfg.DATASETS.ROTATE_DEG = args.rotate_deg
     if args.learn_sigma is not None:
         _cfg.TRAIN.DIFFUSION.LEARN_SIGMA = args.learn_sigma
     if args.noise_schedule is not None:
@@ -167,6 +185,24 @@ def update_config(args, _cfg):
         _cfg.TRAIN.RANDOM_FLIP = args.random_flip
     if args.is_train is not None:
         _cfg.TRAIN.IS_TRAIN = args.is_train
+    if args.eval_every is not None:
+        _cfg.EVAL.EVERY = args.eval_every
+    if args.num_samples_metric is not None:
+        _cfg.EVAL.NUM_SAMPLES_METRIC = args.num_samples_metric
+    if args.num_samples_save is not None:
+        _cfg.EVAL.NUM_SAMPLES_SAVE = args.num_samples_save
+    if args.w_lpips is not None:
+        _cfg.EVAL.W_LPIPS = args.w_lpips
+    if args.use_fid is not None:
+        _cfg.EVAL.USE_FID = args.use_fid
+    if args.fid_max_real is not None:
+        _cfg.EVAL.FID_MAX_REAL = args.fid_max_real
+    if args.fid_real_dir is not None:
+        _cfg.EVAL.FID_REAL_DIR = args.fid_real_dir
+    if args.real_pool_size is not None:
+        _cfg.EVAL.REAL_POOL_SIZE = args.real_pool_size
+    if args.lpips_net is not None:
+        _cfg.EVAL.LPIPS_NET = args.lpips_net
     if args.s is not None:
         _cfg.TEST.S = args.s
     if args.deterministic_test is not None:
@@ -197,6 +233,20 @@ def add_base_args(parser, _cfg):
     parser.add_argument('--dataset_mode',
                         default=_cfg.DATASETS.DATASET_MODE,
                         type=str)
+    parser.add_argument('--datadir',
+                        default=_cfg.DATASETS.DATADIR,
+                        type=str)
+    parser.add_argument('--savedir',
+                        default=_cfg.DATASETS.SAVE_DIR,
+                        type=str)
+    parser.add_argument('--augment',
+                        type=str2bool,
+                        nargs='?',
+                        const=True,
+                        default=_cfg.DATASETS.AUGMENT)
+    parser.add_argument('--rotate_deg',
+                        default=_cfg.DATASETS.ROTATE_DEG,
+                        type=int)
     parser.add_argument('--learn_sigma',
                         type=str2bool,
                         nargs='?',
@@ -369,7 +419,7 @@ def add_base_args(parser, _cfg):
     parser.add_argument('--inference_on_train',
                         type=str2bool,
                         nargs='?',
-                        const=True,
+                        const=False,
                         default=_cfg.TEST.INFERENCE_ON_TRAIN)
     parser.add_argument('--batch_size_test',
                         default=_cfg.TEST.BATCH_SIZE,
@@ -401,6 +451,36 @@ def add_base_args(parser, _cfg):
     parser.add_argument('--add_buffer',
                         default=_cfg.TRAIN.DIFFUSION.ADD_BUFFER,
                         type=str2bool)
+    
+    parser.add_argument('--eval_every',
+                        default=_cfg.EVAL.EVERY,
+                        type=int)
+    parser.add_argument('--num_samples_metric',
+                        default=_cfg.EVAL.NUM_SAMPLES_METRIC,
+                        type=int)
+    parser.add_argument('--num_samples_save',
+                        default=_cfg.EVAL.NUM_SAMPLES_SAVE,
+                        type=int)
+    parser.add_argument('--w_lpips',
+                        default=_cfg.EVAL.W_LPIPS,
+                        type=float)
+    parser.add_argument('--use_fid',
+                        type=str2bool,
+                        nargs='?',
+                        const=True,
+                        default=_cfg.EVAL.USE_FID)
+    parser.add_argument('--fid_max_real',
+                        default=_cfg.EVAL.FID_MAX_REAL,
+                        type=int)
+    parser.add_argument('--fid_real_dir',
+                        default=_cfg.EVAL.FID_REAL_DIR,
+                        type=str)
+    parser.add_argument('--real_pool_size',
+                        default=_cfg.EVAL.REAL_POOL_SIZE,
+                        type=int)
+    parser.add_argument('--lpips_net',
+                        default=_cfg.EVAL.LPIPS_NET,
+                        type=str)
 
 
 def str2bool(v):

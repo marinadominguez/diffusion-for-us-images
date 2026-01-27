@@ -14,7 +14,7 @@ easydict~=1.10
 imageio~=2.28.1
 scipy>=1.8,<1.9.2
 scikit-image~=0.20.0
-deepspeed~=0.9.2
+# deepspeed~=0.9.2  # (skip on Windows)
 blobfile~=2.0.2
 mpi4py~=3.1.4
 opencv-python
