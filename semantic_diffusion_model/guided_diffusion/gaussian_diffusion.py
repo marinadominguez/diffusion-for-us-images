@@ -645,6 +645,9 @@ class GaussianDiffusion:
 
             model_variance = np.append(posterior_variance[1], self.betas[1:])
             model_log_variance = np.log(model_variance)
+
+            model_variance = _extract_into_tensor(model_variance, t, x.shape)
+            model_log_variance = _extract_into_tensor(model_log_variance, t, x.shape)
         else: 
             raise NotImplementedError(self.model_var_type) 
 
