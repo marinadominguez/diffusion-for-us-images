@@ -636,12 +636,15 @@ class GaussianDiffusion:
                 model_log_variance = frac * max_log + (1 - frac) * min_log
                 model_variance = th.exp(model_log_variance)
         elif self.model_var_type == ModelVarType.FIXED_LARGE:
-            # Like OpenAI guided-diffusion:
-            # use betas for all t>0, and posterior_variance[1] for t=0
-            model_variance = np.append(self.posterior_variance[1], self.betas[1:])
+            # FIXED_LARGE: fixed variance schedule (works also under SpacedDiffusion)
+            if hasattr(self, "posterior_variance"):
+                posterior_variance = self.posterior_variance
+            else:
+                # posterior_variance_t = beta_t * (1 - alpha_cumprod_{t-1}) / (1 - alpha_cumprod_t)
+                posterior_variance = self.betas * (1.0 - self.alphas_cumprod_prev) / (1.0 - self.alphas_cumprod)
+
+            model_variance = np.append(posterior_variance[1], self.betas[1:])
             model_log_variance = np.log(model_variance)
-            model_variance = _extract_into_tensor(model_variance, t, x.shape)
-            model_log_variance = _extract_into_tensor(model_log_variance, t, x.shape)
         else: 
             raise NotImplementedError(self.model_var_type) 
 
