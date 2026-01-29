@@ -29,7 +29,7 @@ __C.TRAIN.B_MAP_SCHEDULER_TYPE = "cosine"
 
 __C.TRAIN.IMG_SIZE = 256 # 128 if you have enough memory
 __C.TRAIN.NUM_CLASSES = 5
-__C.TRAIN.LR = 2e-2 #5e-5 #1e-4
+__C.TRAIN.LR = 2e-5 #5e-5 #1e-4
 __C.TRAIN.ATTENTION_RESOLUTIONS = "32,16,8"
 __C.TRAIN.CHANNEL_MULT = None
 __C.TRAIN.DROPOUT = 0.0
